@@ -1,0 +1,10 @@
+flask
+apscheduler
+waitress
+pandas
+datetime
+smtplib
+email
+requests
+logging
+numpy
