@@ -73,7 +73,7 @@ def generate_IRN(json_file):
         invoice=[]
         invoice.append(json_file) 
         print(cg.api_url)
-        print()
+        print(invoice)
         response = requests.put(cg.api_url, headers=header(json_file['transaction']['SellerDtls']['Gstin']), json=invoice)
 
         response_data = response.json() #json.loads(response.text)
@@ -130,26 +130,42 @@ def error_message_list(data):
     return error_messages
 
 def get_buyer(gstin):
-    try:
-        header = header_buyer()
-        info_logger.info(f"The header for Buyer GSTIN API is {header}.")
-        api_url = str(cg.get_buyer) + str(gstin)
-        info_logger.info(f"The url for Buyer GSTIN API is {api_url}.")
-        response = requests.get(api_url, headers=header)
+    i = 1
+    while(i==1):
+        try:
+            header = header_buyer()
+            info_logger.info(f"The header for Buyer GSTIN API is {header}.")
+            api_url = str(cg.get_buyer) + str(gstin)
+            info_logger.info(f"The url for Buyer GSTIN API is {api_url}.")
+            response = requests.get(api_url, headers=header)
 
-        response_data = response.json() #json.loads(response.text)
-        info_logger.info(f"The response for the Buyer GSTIN API is {response_data}.")
-        return response_data
-        # time.sleep(5)
-    except Exception as e: 
-        error_logger.error(f"Error while calling the Buyer GSTIN API:{str(e)}")
+            response_data = response.json() #json.loads(response.text)
+            
+            info_logger.info(f"The response for the Buyer GSTIN API is {response_data}.")
+            print(response.status_code)
+            if response.status_code == 200:
+                try:
+                    if (response['success'] == False) and (response['message'] == 'Invalid response returned by GSTN'):
+                        pass
+                    else:
+                        return response_data
+                except:
+                    return response_data
+            else:
+                return response_data
+            # time.sleep(10)
+
+            # time.sleep(5)
+        except Exception as e: 
+            error_logger.error(f"Error while calling the Buyer GSTIN API:{str(e)}")
+            i = i + 1
 
 
 def pdf(irn):
     try:
         headers = header("27AAFCD5862R013") # 
         info_logger.info(f"The header for PDF is: {headers}")
-        api_url = '{}format=PDF&irns={}'.format(cg.api_pdf, irn)
+        api_url = '{}format=PDF&irns={}&template=3956e98e-32d1-4df4-b5e9-39c716327c9y'.format(cg.api_pdf, irn)
         info_logger.info(f"The API url for PDF is: {api_url}")
         response_pdf = requests.get(
                 api_url,

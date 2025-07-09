@@ -4,7 +4,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 
-file = "C:/codes/cleartrip/code/pdf/"
+# file = "C:/codes/cleartrip/code/pdf/"
 
 # Email configuration
 smtp_server = "smtp.office365.com"  # Replace with your SMTP server (e.g., smtp.gmail.com)

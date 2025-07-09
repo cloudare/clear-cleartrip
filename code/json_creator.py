@@ -95,12 +95,32 @@ def create_json(t):
             inv_type = ""
         try:
             try:
-                add1 = str(buyer["pradr"]["addr"]["flno"]) + " " + str(buyer["pradr"]["addr"]["bnm"]) + " " + str(buyer["pradr"]["addr"]["bno"]) + " " + str(buyer["pradr"]["addr"]["st"]) 
-                add1 = add1.replace("None","")
-                add2 = str(buyer["pradr"]["addr"]["loc"]) + " " + str(buyer["pradr"]["addr"]["city"]) + " " + str(buyer["pradr"]["addr"]["dst"]) + " " + str(buyer["pradr"]["addr"]["stcd"]) 
-                add2 = add2.replace("None","")
+                parts = (str(buyer["pradr"]["addr"]["flno"]) if buyer["pradr"]["addr"]["flno"] != None else "") + "," + (str(buyer["pradr"]["addr"]["bnm"]) if buyer["pradr"]["addr"]["bnm"] != None else "") + "," + (str(buyer["pradr"]["addr"]["bno"]) if buyer["pradr"]["addr"]["bno"] != None else "") + "," + (str(buyer["pradr"]["addr"]["st"]) if buyer["pradr"]["addr"]["st"] != None else "")
+                parts = parts.replace("None","")
+                parts = parts.split(',')
+                add1 = ""
+                for part in parts:
+                    if len(add1) + len(part) + 1 >= 100:  # +1 for the comma
+                        break
+                    if add1:
+                        add1 += ","
+                    add1 += part
+                parts = (str(buyer["pradr"]["addr"]["loc"]) if buyer["pradr"]["addr"]["loc"] != None else "") + "," + (str(buyer["pradr"]["addr"]["city"])  if buyer["pradr"]["addr"]["city"] != None else "") + "," + (str(buyer["pradr"]["addr"]["dst"]) if buyer["pradr"]["addr"]["dst"] != None else "") + "," + (str(buyer["pradr"]["addr"]["stcd"]) if buyer["pradr"]["addr"]["stcd"] != None else "") 
+                parts = parts.replace("None","")
+                parts = parts.split(',')
+                add2 = ""
+                for part in parts:
+                    if len(add2) + len(part) + 1 >= 100:  # +1 for the comma
+                        break
+                    if add2:
+                        add2 += ","
+                    add2 += part
                 loc = buyer["pradr"]["addr"]["loc"]
                 pin = buyer["pradr"]["addr"]["pncd"]
+                print(add2)
+                print(add1)
+                print(len(add2))
+                print(len(add1))
             except:
                 add1 = ""
                 add2 = ""
@@ -170,9 +190,10 @@ def create_json(t):
                     }
         except Exception as e: 
             ct.error_logger.error("Error while creating the json file:"+str(e))
+            return buyer, "", ""
         invoice["transaction"]["ItemList"]=items
         # print(invoice)
-        ct.info_logger.info("The json is: {invoice}")
+        ct.info_logger.info(f"The json is: {invoice}")
         return invoice, customer_no, buyer_gstin 
     except Exception as e: 
         ct.error_logger.error("Error while creating the json file:"+str(e))
@@ -214,7 +235,7 @@ Regards,
         message["From"] = cg.sender_email
         message["To"] = receiver_email
         cc_emails = cg.cc_emails
-        message["Cc"] = ", ".join(cg.cc_emails)
+        # message["Cc"] = ", ".join(cg.cc_emails)   
         message["Subject"] = subject
 
         # Attach the email body
@@ -301,40 +322,28 @@ Regards,
                 # exit()
 
         # Combine all recipients (To + CC)
-        all_recipients = [receiver_email] + cc_emails
+        # all_recipients = [receiver_email] + cc_emails
 
-        # try:
-        #     with open(file_path, "rb") as file:
-        #         # Create a MIMEBase object
-        #         attachment = MIMEBase("application", "octet-stream")
-        #         attachment.set_payload(file.read())
-                
-        #     # Encode the file payload in Base64
-        #     encoders.encode_base64(attachment)
-
-        #     # Add header to set custom file name
-        #     attachment.add_header(
-        #         "Content-Disposition",
-        #         f"attachment; filename={custom_file_name}",
-        #     )
-
-        #     # Attach the file to the message
-        #     message.attach(attachment)
-
-        # except FileNotFoundError:
-        #     ct.error_logger.error(f"Error: File '{file_path}' not found to send the email.")
-        #     exit()
+        all_recipients = []
+        if receiver_email:  # Only add if not empty
+            all_recipients.append(receiver_email)
+        if cc_emails:
+            # Filter out any empty strings in the CC list as well
+            all_recipients.extend(email for email in cc_emails if email)
 
         try:
             email_status = False
+            if not all_recipients:
+                print("No valid recipients provided. Email will not be sent.")
+            else:
             # Connect to SMTP server
-            # with smtplib.SMTP(cg.smtp_server, cg.port) as server:
-            #     server.starttls()  # Upgrade to secure connection
-            #     server.login(cg.sender_email, cg.password)  # Login to your email account
-            #     server.sendmail(sender_email, all_recipients, message.as_string())  # Send email
-            #     print("Email sent successfully!")
-            #     email_status = True
-            # ct.info_logger.info("The email has been sent successfully.")
+                with smtplib.SMTP(cg.smtp_server, cg.port) as server:
+                    server.starttls()  # Upgrade to secure connection
+                    server.login(cg.sender_email, cg.password)  # Login to your email account
+                    server.sendmail(sender_email, all_recipients, message.as_string())  # Send email
+                    print("Email sent successfully!")
+                    email_status = True
+                ct.info_logger.info("The email has been sent successfully.")
             return annexure_status, email_status, pdf_status
         except Exception as e:
             ct.error_logger.error(f"Error occurred while sending the email: {e}")
@@ -495,8 +504,26 @@ def delete_old_files():
                     print(f"Error deleting file {file_path}: {e}")
     
     # Iterate over the files in the output directory
-    for filename in os.listdir(cg.output):
-        file_path = os.path.join(cg.output, filename)
+    for filename in os.listdir(cg.file):
+        file_path = os.path.join(cg.file, filename)
+
+        # Check if it's a file
+        if os.path.isfile(file_path):
+            # Get the last modified time of the file
+            file_mtime = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
+
+            # Check if the file is older than the age limit
+            if current_time - file_mtime > age_limit:
+                try:
+                    # Delete the file
+                    os.remove(file_path)
+                    print(f"Deleted file: {file_path}")
+                except Exception as e:
+                    print(f"Error deleting file {file_path}: {e}")
+
+     # Iterate over the files in the output directory
+    for filename in os.listdir(cg.xlsx_directory):
+        file_path = os.path.join(cg.xlsx_directory, filename)
 
         # Check if it's a file
         if os.path.isfile(file_path):

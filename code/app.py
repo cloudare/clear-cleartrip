@@ -9,9 +9,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 
 def schedule_run():
-    #jc.annexure()
+    # jc.annexure()
     data = views.mainProcess() 
-    # jc.delete_old_files()  
+    jc.delete_old_files()  
     print("Executed: "+str(time.strftime("%A, %d. %B %Y %I:%M:%S %p")))
  
 
